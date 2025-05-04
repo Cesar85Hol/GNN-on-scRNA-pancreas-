@@ -1,24 +1,47 @@
 import numpy as np
 import torch
+from sklearn.metrics.pairwise import cosine_similarity
 from torch_geometric.data import Data
+from torch_geometric.utils import from_networkx,to_networkx
+import networkx as nx
+import matplotlib.pyplot as plt
+from scipy.spatial.distance import pdist, squareform
 
 def adjacent_matrix(array,threshold=0.3):
-    # Calcoliamo la matrice di correlazione Pearson tra cellule
-    # X_pca ha dimensioni (n_cellule, n_componenti)
-    # threshold is % of correlation
-    corr_matrix = np.corrcoef(array, rowvar=False)  
+    
+    #Calculate 3 different similarity matrices 
+    # 1. Pearson correlation
+    pearson_sim = np.corrcoef(array) #row x row
+    thresh_pearson = threshold      #best 0.6
+    print("Pearson correlation matrix")
+    adj_pearson = adjacency_from_similarity(pearson_sim, thresh_pearson)
 
-    print("Dimension of matrix correlation:", corr_matrix.shape)
-    # Crate adjacent matrix
-    adj_matrix = (corr_matrix >= threshold).astype(int)
-    # Remove autocorrelation on diagonal
-    np.fill_diagonal(adj_matrix, 0)
+    # 2. Cosine similarity
+    #tensor = torch.tensor(array, dtype=torch.float)
+    #cosine_sim = torch.nn.functional.cosine_similarity(tensor[0].unsqueeze(0), tensor, dim=1)
+    cosine_sim = cosine_similarity(array)
+    thresh_cosine = threshold       #best 0.9
+    print("Cosine similarity matrix")
+    adj_cosine = adjacency_from_similarity(cosine_sim, thresh_cosine)
+    
+    # 3. Euclidean distance
+    euclidean_dist = squareform(pdist(array, metric='euclidean'))
+    euclidean_sim = 1 / (1 + euclidean_dist)  # Similarità inversa alla distanza
+    thresh_euclidean = threshold    #best 0.25
+    print("Euclidean distance matrix")
+    adj_euclidean = adjacency_from_similarity(euclidean_sim, thresh_euclidean)
+    
+    return adj_pearson, adj_cosine, adj_euclidean
+
+def adjacency_from_similarity(sim_matrix, threshold):
+    adj = (sim_matrix >= threshold).astype(int)
+    np.fill_diagonal(adj, 0)  # niente self-loop
     # Count #edges on uppert part
-    edges_count = np.triu(adj_matrix).sum()
+    edges_count = np.triu(adj).sum()
     print(f"Threshold {threshold}: around {edges_count} graph connections")
-    return adj_matrix
+    return adj
 
-def createGraph(adj_matrix,X_pca):
+def createGraph(adj_matrix,X_pca, top_n=0):
     # Obtain (i,j) where adj_matrix is 1
     edge_indices = np.array(np.nonzero(adj_matrix))
     # edge_indices is an array 2 x E (2 rows: lista i and list of j)
@@ -31,4 +54,39 @@ def createGraph(adj_matrix,X_pca):
     # Creiamo l'oggetto Data di PyG
     data = Data(x=x, edge_index=edge_index)
     print(data)
-    return data
+    if top_n > 0:
+        
+        #creating a subgraph to better visualize the graph
+        subG=extractsubGraph(adj_matrix, top_n=top_n)
+        plt.figure(figsize=(10, 10))
+        nx.draw_spring(subG, node_size=10, with_labels=False, edge_color='gray', alpha=0.7)
+        plt.title(f"SubGraph - {top_n} nodes with higher degree")
+        plt.show()
+    else:
+        G=to_networkx(data, to_undirected=True)
+        #Visualize the graph
+        plt.figure(figsize=(10, 10))
+        pos=nx.spring_layout(G, seed=42)
+        nx.draw(G, pos, with_labels=False,
+                node_size=10, node_color='skyblue', 
+                alpha=0.5)
+        plt.title("Entire graph PCA 50 components")
+        plt.show()
+    return data,edge_index
+
+def extractsubGraph(adj_matrix, top_n=10):
+    # Extract the top_n nodes with the highest degree
+    G = nx.from_numpy_array(adj_matrix)
+    degrees = dict(G.degree())
+    sorted_nodes = sorted(degrees, key=degrees.get, reverse=True)[:top_n]
+    
+    # Create a subgraph with the top_n nodes
+    subgraph = G.subgraph(sorted_nodes)
+    print(subgraph)
+    # Convert to PyTorch Geometric Data object
+    data = from_networkx(subgraph)
+    
+    return subgraph
+    
+
+
