@@ -7,15 +7,15 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import pdist, squareform
 
-def adjacent_matrix(array,threshold=0.3):
+def adjacent_matrix(array,threshold=0.3,top_n=10):
     
     #Calculate 3 different similarity matrices 
     # 1. Pearson correlation
-    pearson_sim = np.corrcoef(array) #row x row
+    pearson_sim = np.corrcoef(array) #row x row --> cells per cells
     thresh_pearson = threshold      #best 0.6
     print("Pearson correlation matrix")
     adj_pearson = adjacency_from_similarity(pearson_sim, thresh_pearson)
-
+    
     # 2. Cosine similarity
     #tensor = torch.tensor(array, dtype=torch.float)
     #cosine_sim = torch.nn.functional.cosine_similarity(tensor[0].unsqueeze(0), tensor, dim=1)
@@ -40,6 +40,27 @@ def adjacency_from_similarity(sim_matrix, threshold):
     edges_count = np.triu(adj).sum()
     print(f"Threshold {threshold}: around {edges_count} graph connections")
     return adj
+
+def get_top_n_correlation_cells(corr_matrix, n_cells,top_n=10):
+    # Build edges based on top-10 correlations for each cell
+    
+    edges_corr = set()
+    for i in range(n_cells):
+        # get correlation values for cell i
+        corr_i = corr_matrix[i].copy()
+        corr_i[i] = -np.inf  # exclude self by setting self-correlation to -inf
+        # find indices of top k highest correlations
+        topk_idx = np.argsort(corr_i)[-top_n:]
+        for j in topk_idx:
+            # add edge i->j
+            edges_corr.add((i, j))
+            # also add reverse edge j->i to make it undirected
+            edges_corr.add((j, i))
+
+    # Convert edge list to edge_index format (2 x E array)
+    edge_index_corr = np.array(list(edges_corr), dtype=int).T
+    print("Correlation graph edges:", edge_index_corr.shape[1])
+
 
 def createGraph(adj_matrix,X_pca, top_n=0):
     # Obtain (i,j) where adj_matrix is 1

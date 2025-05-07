@@ -11,10 +11,12 @@
 URL1="https://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/sc_experiments/E-MTAB-5061/E-MTAB-5061.aggregated_counts.mtx.gz"
 URL2="https://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/sc_experiments/E-MTAB-5061/E-MTAB-5061.aggregated_counts.mtx_rows"
 URL3="https://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/sc_experiments/E-MTAB-5061/E-MTAB-5061.aggregated_counts.mtx_cols"
+URL4="https://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/sc_experiments/E-MTAB-5061/E-MTAB-5061.cell_metadata.tsv"
 
 DEST="../data/raw/data.mtx.gz"
 DEST2="../data/raw/data_rows.txt"
 DEST3="../data/raw/data_cols.txt"
+DEST4="../data/raw/cell_metadata.tsv"
 
 
 
@@ -24,3 +26,4 @@ DEST3="../data/raw/data_cols.txt"
 wget -O "$DEST" "$URL1"
 wget -O "$DEST2" "$URL2"
 wget -O "$DEST3" "$URL3"
+wget -O "$DEST4" "$URL4"
