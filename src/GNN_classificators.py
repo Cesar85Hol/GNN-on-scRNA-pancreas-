@@ -26,6 +26,8 @@ class GraphSAGENet(nn.Module):
         super(GraphSAGENet, self).__init__()
         self.conv1 = SAGEConv(in_channels, hidden_channels)
         self.conv2 = SAGEConv(hidden_channels, out_channels)
+        self.dropout_rate = dropout_rate
+
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
         x = F.relu(x)
@@ -37,9 +39,11 @@ class GATNet(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, heads=8, dropout_rate=0.5):
         super(GATNet, self).__init__()
         # First layer: GATConv with multiple heads, outputs hidden_channels features *per head*
-        self.gat1 = GATConv(in_channels, hidden_channels // heads, heads=heads, dropout=0.6)
+        self.gat1 = GATConv(in_channels, hidden_channels // heads, heads=heads, dropout=dropout_rate)
         # Second layer: GATConv with one head that outputs out_channels (no concat in final layer)
-        self.gat2 = GATConv(hidden_channels, out_channels, heads=1, concat=True, dropout=0.6)
+        self.gat2 = GATConv(hidden_channels, out_channels, heads=1, concat=True, dropout=dropout_rate)
+        self.dropout_rate = dropout_rate
+
     def forward(self, x, edge_index):
         x = self.gat1(x, edge_index)
         x = F.relu(x)
